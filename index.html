@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payroll Exception Report - Main Menu</title>
+    <link rel="manifest" href="/manifest.json">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .payroll-list {
+            margin-top: 20px;
+        }
+        .payroll-item {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            background-color: #f9f9f9;
+        }
+        .payroll-item:hover {
+            background-color: #e0e0e0;
+        }
+        .payroll-item.locked::after {
+            content: '🔒';
+            margin-left: 10px;
+        }
+        .form-container {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            background-color: #f9f9f9;
+        }
+        .form-container label {
+            display: inline-block;
+            width: 150px;
+        }
+        .form-container input {
+            width: 200px;
+            padding: 5px;
+        }
+        .btn {
+            padding: 10px;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .add-btn {
+            background-color: #4CAF50;
+        }
+        .add-btn:hover {
+            background-color: #45a049;
+        }
+        .delete-btn {
+            background-color: #ff4444;
+        }
+        .delete-btn:hover {
+            background-color: #cc0000;
+        }
+    </style>
+</head>
+<body>
+    <h1>Payroll Exception Report - Main Menu</h1>
+    <div class="form-container">
+        <h3>Add New Payroll</h3>
+        <form id="newPayrollForm">
+            <label>Payroll Name:</label>
+            <input type="text" id="newPayrollName" name="newPayrollName" placeholder="e.g., Payroll 2025-05-01" required><br>
+            <button type="submit" class="btn add-btn">Add Payroll</button>
+        </form>
+    </div>
+    <div class="payroll-list" id="payrollList">
+        <!-- Payrolls will be dynamically added here -->
+    </div>
+
+    <script>
+        let payrollData = JSON.parse(localStorage.getItem('payrollData')) || {
+            'Payroll 2025-04-25': {
+                exceptions: {
+                    newHires: [{ id: '001', hireDate: '2025-04-01', effectiveDate: '2025-04-01', lastDayWorked: '-', status: 'Active', name: 'John Doe', typeOfPay: 'Hourly', additionalCompensation: 'Sign-on Bonus', hours: '40', rate: '25.00', amount: '1000.00', locationCode: 'NYC01', reason: 'New Hire', comments: 'Confirmed with HR', done: 'Yes' }],
+                    salaryChanges: [{ id: '002', hireDate: '2024-01-15', effectiveDate: '2025-05-01', lastDayWorked: '-', status: 'Active', name: 'Jane Smith', typeOfPay: 'Salaried', additionalCompensation: 'Merit Increase', hours: '-', rate: '60000.00', amount: '5000.00', locationCode: 'CHI02', reason: 'Promotion', comments: 'Approved by Manager', done: 'No' }],
+                    directDeposit: [], '401kChanges': [], termination: [], vacationPayOff: [], benefitsEnrollment: [], benefitsChanges: [], leaveOfAbsence: [], jobTitleOrDeptChanges: [], newGarnishments: [], manualEntries: [], overTimeReport: [], perDiem: [], professionalServices: [], continuingEducation: [], partTimeFaculty: [], carAndCellAllowance: [], special: []
+                },
+                messages: {
+                    text: 'Verificar si Kelly Ortiz tiene cursos asignados por cada PT\'s: 475\nVerificar si Irma Ortiz tiene cursos asignados por cada PT\'s: 475\nVerificar si Angel Quintana tiene cursos asignados por cada PT\'s: 475',
+                    total: '1425.00'
+                },
+                payrollInfo: {
+                    payrollCount: '223',
+                    realCount: '222',
+                    regularPayroll: '669682.73',
+                    netPay: '510269.71',
+                    ptFacultyGross: '345277.09',
+                    tqGross: '345633.36',
+                    extraPayment: '5500.00',
+                    ptAdjustment: '356.25',
+                    totalPayrollPT: '352558.34',
+                    tqTotal: '352558.36',
+                    tqNet: '312917.20'
+                },
+                locked: false
+            }
+        };
+
+        function savePayrollData() {
+            localStorage.setItem('payrollData', JSON.stringify(payrollData));
+        }
+
+        function loadPayrollList() {
+            const payrollList = document.getElementById('payrollList');
+            payrollList.innerHTML = '';
+            Object.keys(payrollData).forEach(payrollName => {
+                const div = document.createElement('div');
+                div.className = 'payroll-item' + (payrollData[payrollName].locked ? ' locked' : '');
+                div.innerHTML = `
+                    <span onclick="viewPayroll('${payrollName}')">${payrollName}</span>
+                    <button class="btn delete-btn" onclick="deletePayroll('${payrollName}')">Delete</button>
+                `;
+                payrollList.appendChild(div);
+            });
+        }
+
+        document.getElementById('newPayrollForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const payrollName = document.getElementById('newPayrollName').value;
+            if (!payrollData[payrollName]) {
+                payrollData[payrollName] = {
+                    exceptions: {
+                        newHires: [], salaryChanges: [], directDeposit: [], '401kChanges': [], termination: [], vacationPayOff: [], benefitsEnrollment: [], benefitsChanges: [], leaveOfAbsence: [], jobTitleOrDeptChanges: [], newGarnishments: [], manualEntries: [], overTimeReport: [], perDiem: [], professionalServices: [], continuingEducation: [], partTimeFaculty: [], carAndCellAllowance: [], special: []
+                    },
+                    messages: { text: '', total: '0.00' },
+                    payrollInfo: {
+                        payrollCount: '0', realCount: '0', regularPayroll: '0.00', netPay: '0.00',
+                        ptFacultyGross: '0.00', tqGross: '0.00', extraPayment: '0.00', ptAdjustment: '0.00',
+                        totalPayrollPT: '0.00', tqTotal: '0.00', tqNet: '0.00'
+                    },
+                    locked: false
+                };
+                savePayrollData();
+                loadPayrollList();
+                this.reset();
+            } else {
+                alert('Payroll name already exists!');
+            }
+        });
+
+        function viewPayroll(payrollName) {
+            window.location.href = `payroll.html?payroll=${encodeURIComponent(payrollName)}`;
+        }
+
+        function deletePayroll(payrollName) {
+            if (confirm(`Are you sure you want to delete ${payrollName}?`)) {
+                delete payrollData[payrollName];
+                savePayrollData();
+                loadPayrollList();
+            }
+        }
+
+        // Initial load
+        loadPayrollList();
+
+        // Register service worker for PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').then(() => {
+                console.log('Service Worker Registered');
+            });
+        }
+    </script>
+</body>
+</html>
