@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payroll Exception Report - Detail</title>
+    <link rel="manifest" href="/manifest.json">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .category-header {
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            padding: 10px;
+            font-size: 1.2em;
+        }
+        .category-header:hover {
+            background-color: #45a049;
+        }
+        .collapsible {
+            display: none;
+        }
+        .collapsible.show {
+            display: table-row-group;
+        }
+        .btn {
+            padding: 10px;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .export-btn {
+            background-color: #008CBA;
+        }
+        .export-btn:hover {
+            background-color: #005f73;
+        }
+        .add-btn {
+            background-color: #4CAF50;
+        }
+        .add-btn:hover {
+            background-color: #45a049;
+        }
+        .import-btn {
+            background-color: #FFA500;
+        }
+        .import-btn:hover {
+            background-color: #e69500;
+        }
+        .lock-btn, .unlock-btn {
+            background-color: #6A5ACD;
+        }
+        .lock-btn:hover, .unlock-btn:hover {
+            background-color: #483D8B;
+        }
+        .back-btn {
+            background-color: #555;
+        }
+        .back-btn:hover {
+            background-color: #333;
+        }
+        .form-container, .messages-container, .payroll-info-container {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            background-color: #f9f9f9;
+        }
+        .form-container label, .messages-container label, .payroll-info-container label {
+            display: inline-block;
+            width: 150px;
+            margin: 5px 0;
+        }
+        .form-container input, .form-container select, .messages-container textarea, .payroll-info-container input {
+            width: 200px;
+            padding: 5px;
+            margin: 5px 0;
+        }
+        .messages-container textarea {
+            width: 500px;
+            height: 100px;
+        }
+        .action-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #007BFF;
+            margin-right: 10px;
+        }
+        .action-btn:hover {
+            text-decoration: underline;
+        }
+        .payroll-info-table {
+            width: 50%;
+            margin-top: 10px;
+        }
+        .payroll-info-table td {
+            padding: 5px;
+            text-align: right;
+        }
+        .payroll-info-table td:first-child {
+            text-align: left;
+            font-weight: bold;
+        }
+        .locked-message {
+            color: red;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <button class="btn back-btn" onclick="window.location.href='index.html'">Back to Main Menu</button>
+    <h1>Payroll Exception Report - <span id="payrollName"></span></h1>
+    <div id="lockedMessage" class="locked-message" style="display: none;">This payroll is locked and cannot be edited.</div>
+    <button id="lockBtn" class="btn lock-btn" onclick="toggleLock(true)">Lock Payroll</button>
+    <button id="unlockBtn" class="btn unlock-btn" onclick="toggleLock(false)" style="display: none;">Unlock Payroll</button>
+    <button class="btn export-btn" onclick="exportToExcel()">Export to Excel</button>
+    <button id="addBtn" class="btn add-btn" onclick="showAddForm()">Add New Entry</button>
+    <input type="file" id="importFile" accept=".xlsx,.csv" style="display: none;" onchange="importFromExcel(event)">
+    <button id="importBtn" class="btn import-btn" onclick="document.getElementById('importFile').click()">Import from Excel</button>
+
+    <div id="formContainer" class="form-container" style="display: none;">
+        <h3 id="formTitle">Add New Entry</h3>
+        <form id="exceptionForm">
+            <label>Category:</label>
+            <select id="category" name="category" required>
+                <option value="newHires">New Hires</option>
+                <option value="salaryChanges">Salary Changes</option>
+                <option value="directDeposit">Direct Deposit</option>
+                <option value="401kChanges">401K Changes</option>
+                <option value="termination">Termination</option>
+                <option value="vacationPayOff">Vacation Pay Off</option>
+                <option value="benefitsEnrollment">Benefits Enrollment</option>
+                <option value="benefitsChanges">Benefits Changes</option>
+                <option value="leaveOfAbsence">Leave of Absence</option>
+                <option value="jobTitleOrDeptChanges">Job Title or Dept Changes</option>
+                <option value="newGarnishments">New Garnishments</option>
+                <option value="manualEntries">Manual Entries</option>
+                <option value="overTimeReport">Over Time Report_Last Period</option>
+                <option value="perDiem">Per Diem</option>
+                <option value="professionalServices">Professional Services</option>
+                <option value="continuingEducation">Continuing Education</option>
+                <option value="partTimeFaculty">Part Time Faculty</option>
+                <option value="carAndCellAllowance">Car and Cell Allowance_2nd Pay</option>
+                <option value="special">Special</option>
+            </select><br>
+            <label>ID:</label><input type="text" id="id" name="id" required><br>
+            <label>Hire Date:</label><input type="date" id="hireDate" name="hireDate"><br>
+            <label>Effective Date:</label><input type="date" id="effectiveDate" name="effectiveDate" required><br>
+            <label>Last Day Worked:</label><input type="date" id="lastDayWorked" name="lastDayWorked"><br>
+            <label>Status:</label><input type="text" id="status" name="status" required><br>
+            <label>Name:</label><input type="text" id="name" name="name" required><br>
+            <label>Type of Pay:</label><input type="text" id="typeOfPay" name="typeOfPay"><br>
+            <label>Additional Compensation:</label><input type="text" id="additionalCompensation" name="additionalCompensation"><br>
+            <label>HOURS:</label><input type="number" id="hours" name="hours" step="0.01"><br>
+            <label>RATE:</label><input type="number" id="rate" name="rate" step="0.01"><br>
+            <label>AMOUNT:</label><input type="number" id="amount" name="amount" step="0.01"><br>
+            <label>Location Code:</label><input type="text" id="locationCode" name="locationCode"><br>
+            <label>Reason:</label><input type="text" id="reason" name="reason" required><br>
+            <label>Comments:</label><input type="text" id="comments" name="comments"><br>
+            <label>Done:</label><select id="done" name="done"><option value="Yes">Yes</option><option value="No">No</option></select><br>
+            <button type="submit" id="submitBtn">Add Entry</button>
+            <button type="button" onclick="hideForm()">Cancel</button>
+        </form>
+    </div>
+
+    <table id="exceptionTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Hire Date</th>
+                <th>Effective Date</th>
+                <th>Last Day Worked</th>
+                <th>Status</th>
+                <th>Name</th>
+                <th>Type of Pay</th>
+                <th>Additional Compensation</th>
+                <th>HOURS</th>
+                <th>RATE</th>
+                <th>AMOUNT</th>
+                <th>Location Code</th>
+                <th>Reason</th>
+                <th>Comments</th>
+                <th>Done</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+            <!-- New Hires -->
+            <tr class="category-header" onclick="toggleCategory('newHires')">
+                <td colspan="16">New Hires</td>
+            </tr>
+            <tbody id="newHires" class="collapsible"></tbody>
+            <!-- Salary Changes -->
+            <tr class="category-header" onclick="toggleCategory('salaryChanges')">
+                <td colspan="16">Salary Changes</td>
+            </tr>
+            <tbody id="salaryChanges" class="collapsible"></tbody>
+            <!-- Direct Deposit -->
+            <tr class="category-header" onclick="toggleCategory('directDeposit')">
+                <td colspan="16">Direct Deposit</td>
+            </tr>
+            <tbody id="directDeposit" class="collapsible"></tbody>
+            <!-- 401K Changes -->
+            <tr class="category-header" onclick="toggleCategory('401kChanges')">
+                <td colspan="16">401K Changes</td>
+            </tr>
+            <tbody id="401kChanges" class="collapsible"></tbody>
+            <!-- Termination -->
+            <tr class="category-header" onclick="toggleCategory('termination')">
+                <td colspan="16">Termination</td>
+            </tr>
+            <tbody id="termination" class="collapsible"></tbody>
+            <!-- Vacation Pay Off -->
+            <tr class="category-header" onclick="toggleCategory('vacationPayOff')">
+                <td colspan="16">Vacation Pay Off</td>
+            </tr>
+            <tbody id="vacationPayOff" class="collapsible"></tbody>
+            <!-- Benefits Enrollment -->
+            <tr class="category-header" onclick="toggleCategory('benefitsEnrollment')">
+                <td colspan="16">Benefits Enrollment</td>
+            </tr>
+            <tbody id="benefitsEnrollment" class="collapsible"></tbody>
+            <!-- Benefits Changes -->
+            <tr class="category-header" onclick="toggleCategory('benefitsChanges')">
+                <td colspan="16">Benefits Changes</td>
+            </tr>
+            <tbody id="benefitsChanges" class="collapsible"></tbody>
+            <!-- Leave of Absence -->
+            <tr class="category-header" onclick="toggleCategory('leaveOfAbsence')">
+                <td colspan="16">Leave of Absence</td>
+            </tr>
+            <tbody id="leaveOfAbsence" class="collapsible"></tbody>
+            <!-- Job Title or Dept Changes -->
+            <tr class="category-header" onclick="toggleCategory('jobTitleOrDeptChanges')">
+                <td colspan="16">Job Title or Dept Changes</td>
+            </tr>
+            <tbody id="jobTitleOrDeptChanges" class="collapsible"></tbody>
+            <!-- New Garnishments -->
+            <tr class="category-header" onclick="toggleCategory('newGarnishments')">
+                <td colspan="16">New Garnishments</td>
+            </tr>
+            <tbody id="newGarnishments" class="collapsible"></tbody>
+            <!-- Manual Entries -->
+            <tr class="category-header" onclick="toggleCategory('manualEntries')">
+                <td colspan="16">Manual Entries</td>
+            </tr>
+            <tbody id="manualEntries" class="collapsible"></tbody>
+            <!-- Over Time Report_Last Period -->
+            <tr class="category-header" onclick="toggleCategory('overTimeReport')">
+                <td colspan="16">Over Time Report_Last Period</td>
+            </tr>
+            <tbody id="overTimeReport" class="collapsible"></tbody>
+            <!-- Per Diem -->
+            <tr class="category-header" onclick="toggleCategory('perDiem')">
+                <td colspan="16">Per Diem</td>
+            </tr>
+            <tbody id="perDiem" class="collapsible"></tbody>
+            <!-- Professional Services -->
+            <tr class="category-header" onclick="toggleCategory('professionalServices')">
+                <td colspan="16">Professional Services</td>
+            </tr>
+            <tbody id="professionalServices" class="collapsible"></tbody>
+            <!-- Continuing Education -->
+            <tr class="category-header" onclick="toggleCategory('continuingEducation')">
+                <td colspan="16">Continuing Education</td>
+            </tr>
+            <tbody id="continuingEducation" class="collapsible"></tbody>
+            <!-- Part Time Faculty -->
+            <tr class="category-header" onclick="toggleCategory('partTimeFaculty')">
+                <td colspan="16">Part Time Faculty</td>
+            </tr>
+            <tbody id="partTimeFaculty" class="collapsible"></tbody>
+            <!-- Car and Cell Allowance_2nd Pay -->
+            <tr class="category-header" onclick="toggleCategory('carAndCellAllowance')">
+                <td colspan="16">Car and Cell Allowance_2nd Pay of the Month</td>
+            </tr>
+            <tbody id="carAndCellAllowance" class="collapsible"></tbody>
+            <!-- Special -->
+            <tr class="category-header" onclick="toggleCategory('special')">
+                <td colspan="16">Special</td>
+            </tr>
+            <tbody id="special" class="collapsible"></tbody>
+        </tbody>
+    </table>
+
+    <div class="messages-container">
+        <h3>Important Messages</h3>
+        <form id="messagesForm">
+            <label>Messages:</label>
+            <textarea id="importantMessages" name="importantMessages"></textarea><br>
+            <label>Total Amount:</label>
+            <input type="number" id="messagesTotal" name="messagesTotal" step="0.01"><br>
+            <button type="submit">Save Messages</button>
+        </form>
+    </div>
+
+    <div class="payroll-info-container">
+        <h3>Payroll Information</h3>
+        <form id="payrollInfoForm">
+            <label>Payroll Count:</label><input type="number" id="payrollCount" name="payrollCount"><br>
+            <label>Real Count:</label><input type="number" id="realCount" name="realCount"><br>
+            <label>Regular Payroll:</label><input type="number" id="regularPayroll" name="regularPayroll" step="0.01"><br>
+            <label>Net Pay:</label><input type="number" id="netPay" name="netPay" step="0.01"><br>
+            <label>PT Faculty Gross:</label><input type="number" id="ptFacultyGross" name="ptFacultyGross" step="0.01"><br>
+            <label>TQ Gross:</label><input type="number" id="tqGross" name="tqGross" step="0.01"><br>
+            <label>Extra Payment:</label><input type="number" id="extraPayment" name="extraPayment" step="0.01"><br>
+            <label>PT Adjustment:</label><input type="number" id="ptAdjustment" name="ptAdjustment" step="0.01"><br>
+            <label>Total Payroll PT:</label><input type="number" id="totalPayrollPT" name="totalPayrollPT" step="0.01"><br>
+            <label>TQ Total:</label><input type="number" id="tqTotal" name="tqTotal" step="0.01"><br>
+            <label>TQ NET:</label><input type="number" id="tqNet" name="tqNet" step="0.01"><br>
+            <button type="submit">Save Payroll Info</button>
+        </form>
+        <table class="payroll-info-table">
+            <tr><td>Payroll Count:</td><td id="displayPayrollCount"></td></tr>
+            <tr><td>Real Count:</td><td id="displayRealCount"></td></tr>
+            <tr><td>Regular Payroll:</td><td id="displayRegularPayroll"></td></tr>
+            <tr><td>Net Pay:</td><td id="displayNetPay"></td></tr>
+            <tr><td>PT Faculty Gross:</td><td id="displayPtFacultyGross"></td></tr>
+            <tr><td>TQ Gross:</td><td id="displayTqGross"></td></tr>
+            <tr><td>Extra Payment:</td><td id="displayExtraPayment"></td></tr>
+            <tr><td>PT Adjustment:</td><td id="displayPtAdjustment"></td></tr>
+            <tr><td>Total Payroll PT:</td><td id="displayTotalPayrollPT"></td></tr>
+            <tr><td>TQ Total:</td><td id="displayTqTotal"></td></tr>
+            <tr><td>TQ NET:</td><td id="displayTqNet"></td></tr>
+        </table>
+    </div>
+
+    <script>
+        let currentPayroll = new URLSearchParams(window.location.search).get('payroll');
+        let payrollData = JSON.parse(localStorage.getItem('payrollData')) || {};
+        let editId = null;
+        let editCategory = null;
+
+        function savePayrollData() {
+            localStorage.setItem('payrollData', JSON.stringify(payrollData));
+        }
+
+        function loadPayroll() {
+            if (!payrollData[currentPayroll]) {
+                alert('Payroll not found!');
+                window.location.href = 'index.html';
+                return;
+            }
+            document.getElementById('payrollName').textContent = currentPayroll;
+            const data = payrollData[currentPayroll];
+            const isLocked = data.locked;
+            document.getElementById('lockedMessage').style.display = isLocked ? 'block' : 'none';
+            document.getElementById('lockBtn').style.display = isLocked ? 'none' : 'inline';
+            document.getElementById('unlockBtn').style.display = isLocked ? 'inline' : 'none';
+            document.getElementById('addBtn').disabled = isLocked;
+            document.getElementById('importBtn').disabled = isLocked;
+            document.getElementById('exceptionForm').querySelectorAll('input, select, button').forEach(el => el.disabled = isLocked);
+            document.getElementById('messagesForm').querySelectorAll('textarea, input, button').forEach(el => el.disabled = isLocked);
+            document.getElementById('payrollInfoForm').querySelectorAll('input, button').forEach(el => el.disabled = isLocked);
+
+            const categories = ['newHires', 'salaryChanges', 'directDeposit', '401kChanges', 'termination', 'vacationPayOff', 'benefitsEnrollment', 'benefitsChanges', 'leaveOfAbsence', 'jobTitleOrDeptChanges', 'newGarnishments', 'manualEntries', 'overTimeReport', 'perDiem', 'professionalServices', 'continuingEducation', 'partTimeFaculty', 'carAndCellAllowance', 'special'];
+            categories.forEach(category => {
+                const tbody = document.getElementById(category);
+                tbody.innerHTML = '';
+                data.exceptions[category].forEach(entry => {
+                    const row = document.createElement('tr');
+                    row.setAttribute('data-id', entry.id);
+                    row.innerHTML = `
+                        <td>${entry.id}</td>
+                        <td>${entry.hireDate}</td>
+                        <td>${entry.effectiveDate}</td>
+                        <td>${entry.lastDayWorked}</td>
+                        <td>${entry.status}</td>
+                        <td>${entry.name}</td>
+                        <td>${entry.typeOfPay}</td>
+                        <td>${entry.additionalCompensation}</td>
+                        <td>${entry.hours}</td>
+                        <td>${entry.rate}</td>
+                        <td>${entry.amount}</td>
+                        <td>${entry.locationCode}</td>
+                        <td>${entry.reason}</td>
+                        <td>${entry.comments}</td>
+                        <td>${entry.done}</td>
+                        <td>
+                            <button class="action-btn" onclick="editEntry('${entry.id}', '${category}')" ${isLocked ? 'disabled' : ''}>Edit</button>
+                            <button class="action-btn" onclick="deleteEntry('${entry.id}', '${category}')" ${isLocked ? 'disabled' : ''}>Delete</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            });
+
+            document.getElementById('importantMessages').value = data.messages.text;
+            document.getElementById('messagesTotal').value = data.messages.total;
+            document.getElementById('payrollCount').value = data.payrollInfo.payrollCount;
+            document.getElementById('realCount').value = data.payrollInfo.realCount;
+            document.getElementById('regularPayroll').value = data.payrollInfo.regularPayroll;
+            document.getElementById('netPay').value = data.payrollInfo.netPay;
+            document.getElementById('ptFacultyGross').value = data.payrollInfo.ptFacultyGross;
+            document.getElementById('tqGross').value = data.payrollInfo.tqGross;
+            document.getElementById('extraPayment').value = data.payrollInfo.extraPayment;
+            document.getElementById('ptAdjustment').value = data.payrollInfo.ptAdjustment;
+            document.getElementById('totalPayrollPT').value = data.payrollInfo.totalPayrollPT;
+            document.getElementById('tqTotal').value = data.payrollInfo.tqTotal;
+            document.getElementById('tqNet').value = data.payrollInfo.tqNet;
+
+            updatePayrollInfoDisplay();
+        }
+
+        function updatePayrollInfoDisplay() {
+            const data = payrollData[currentPayroll].payrollInfo;
+            document.getElementById('displayPayrollCount').textContent = data.payrollCount;
+            document.getElementById('displayRealCount').textContent = data.realCount;
+            document.getElementById('displayRegularPayroll').textContent = data.regularPayroll;
+            document.getElementById('displayNetPay').textContent = data.netPay;
+            document.getElementById('displayPtFacultyGross').textContent = data.ptFacultyGross;
+            document.getElementById('displayTqGross').textContent = data.tqGross;
+            document.getElementById('displayExtraPayment').textContent = data.extraPayment;
+            document.getElementById('displayPtAdjustment').textContent = data.ptAdjustment;
+            document.getElementById('displayTotalPayrollPT').textContent = data.totalPayrollPT;
+            document.getElementById('displayTqTotal').textContent = data.tqTotal;
+            document.getElementById('displayTqNet').textContent = data.tqNet;
+        }
+
+        function showAddForm() {
+            document.getElementById('formTitle').textContent = 'Add New Entry';
+            document.getElementById('submitBtn').textContent = 'Add Entry';
+            document.getElementById('exceptionForm').reset();
+            document.getElementById('formContainer').style.display = 'block';
+            editId = null;
+            editCategory = null;
+        }
+
+        function hideForm() {
+            document.getElementById('formContainer').style.display = 'none';
+        }
+
+        document.getElementById('exceptionForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const category = document.getElementById('category').value;
+            const entry = {
+                id: document.getElementById('id').value,
+                hireDate: document.getElementById('hireDate').value || '-',
+                effectiveDate: document.getElementById('effectiveDate').value,
+                lastDayWorked: document.getElementById('lastDayWorked').value || '-',
+                status: document.getElementById('status').value,
+                name: document.getElementById('name').value,
+                typeOfPay: document.getElementById('typeOfPay').value || '-',
+                additionalCompensation: document.getElementById('additionalCompensation').value || '-',
+                hours: document.getElementById('hours').value || '-',
+                rate: document.getElementById('rate').value || '-',
+                amount: document.getElementById('amount').value || '-',
+                locationCode: document.getElementById('locationCode').value || '-',
+                reason: document.getElementById('reason').value,
+                comments: document.getElementById('comments').value || '-',
+                done: document.getElementById('done').value
+            };
+
+            if (editId && editCategory) {
+                const index = payrollData[currentPayroll].exceptions[editCategory].findIndex(e => e.id === editId);
+                payrollData[currentPayroll].exceptions[editCategory][index] = entry;
+            } else {
+                payrollData[currentPayroll].exceptions[category].push(entry);
+            }
+            savePayrollData();
+            loadPayroll();
+            hideForm();
+        });
+
+        function editEntry(id, category) {
+            const entry = payrollData[currentPayroll].exceptions[category].find(e => e.id === id);
+            document.getElementById('formTitle').textContent = 'Edit Entry';
+            document.getElementById('submitBtn').textContent = 'Update Entry';
+            document.getElementById('category').value = category;
+            document.getElementById('id').value = entry.id;
+            document.getElementById('hireDate').value = entry.hireDate === '-' ? '' : entry.hireDate;
+            document.getElementById('effectiveDate').value = entry.effectiveDate;
+            document.getElementById('lastDayWorked').value = entry.lastDayWorked === '-' ? '' : entry.lastDayWorked;
+            document.getElementById('status').value = entry.status;
+            document.getElementById('name').value = entry.name;
+            document.getElementById('typeOfPay').value = entry.typeOfPay === '-' ? '' : entry.typeOfPay;
+            document.getElementById('additionalCompensation').value = entry.additionalCompensation === '-' ? '' : entry.additionalCompensation;
+            document.getElementById('hours').value = entry.hours === '-' ? '' : entry.hours;
+            document.getElementById('rate').value = entry.rate === '-' ? '' : entry.rate;
+            document.getElementById('amount').value = entry.amount === '-' ? '' : entry.amount;
+            document.getElementById('locationCode').value = entry.locationCode === '-' ? '' : entry.locationCode;
+            document.getElementById('reason').value = entry.reason;
+            document.getElementById('comments').value = entry.comments === '-' ? '' : entry.comments;
+            document.getElementById('done').value = entry.done;
+            document.getElementById('formContainer').style.display = 'block';
+            editId = id;
+            editCategory = category;
+        }
+
+        function deleteEntry(id, category) {
+            if (confirm('Are you sure you want to delete this entry?')) {
+                payrollData[currentPayroll].exceptions[category] = payrollData[currentPayroll].exceptions[category].filter(e => e.id !== id);
+                savePayrollData();
+                loadPayroll();
+            }
+        }
+
+        document.getElementById('messagesForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            payrollData[currentPayroll].messages.text = document.getElementById('importantMessages').value;
+            payrollData[currentPayroll].messages.total = document.getElementById('messagesTotal').value;
+            savePayrollData();
+            loadPayroll();
+        });
+
+        document.getElementById('payrollInfoForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            payrollData[currentPayroll].payrollInfo = {
+                payrollCount: document.getElementById('payrollCount').value,
+                realCount: document.getElementById('realCount').value,
+                regularPayroll: document.getElementById('regularPayroll').value,
+                netPay: document.getElementById('netPay').value,
+                ptFacultyGross: document.getElementById('ptFacultyGross').value,
+                tqGross: document.getElementById('tqGross').value,
+                extraPayment: document.getElementById('extraPayment').value,
+                ptAdjustment: document.getElementById('ptAdjustment').value,
+                totalPayrollPT: document.getElementById('totalPayrollPT').value,
+                tqTotal: document.getElementById('tqTotal').value,
+                tqNet: document.getElementById('tqNet').value
+            };
+            savePayrollData();
+            loadPayroll();
+        });
+
+        function toggleCategory(category) {
+            const tbody = document.getElementById(category);
+            tbody.classList.toggle('show');
+        }
+
+        function exportToExcel() {
+            const wb = XLSX.utils.book_new();
+            const data = payrollData[currentPayroll];
+            const categories = Object.keys(data.exceptions);
+            categories.forEach(category => {
+                const ws = XLSX.utils.json_to_sheet(data.exceptions[category]);
+                XLSX.utils.book_append_sheet(wb, ws, category);
+            });
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([data.messages]), 'Messages');
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([data.payrollInfo]), 'PayrollInfo');
+            XLSX.write_file(wb, `${currentPayroll}.xlsx`);
+        }
+
+        function importFromExcel(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const newData = { exceptions: {}, messages: {}, payrollInfo: {}, locked: payrollData[currentPayroll].locked };
+                Object.keys(payrollData[currentPayroll].exceptions).forEach(category => {
+                    const ws = workbook.Sheets[category];
+                    newData.exceptions[category] = ws ? XLSX.utils.sheet_to_json(ws) : [];
+                });
+                newData.messages = XLSX.utils.sheet_to_json(workbook.Sheets['Messages'])[0] || { text: '', total: '0.00' };
+                newData.payrollInfo = XLSX.utils.sheet_to_json(workbook.Sheets['PayrollInfo'])[0] || {};
+                payrollData[currentPayroll] = newData;
+                savePayrollData();
+                loadPayroll();
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function toggleLock(lock) {
+            payrollData[currentPayroll].locked = lock;
+            savePayrollData();
+            loadPayroll();
+        }
+
+        // Initial load
+        loadPayroll();
+
+        // Register service worker for PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').then(() => {
+                console.log('Service Worker Registered');
+            });
+        }
+    </script>
+</body>
+</html>
